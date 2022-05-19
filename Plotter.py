@@ -20,7 +20,9 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 
 # Utilities imports
 import numpy as np
-import re
+import re  # Regular expressions
+
+# CONSTANTS
 
 DEFAULT_FONT = QFont("Calibri", 15)
 X_RANGE = (-1000, 1000)
@@ -30,7 +32,7 @@ X_LABEL = "X"
 Y_LABEL = "Y"
 
 
-allowedFunctions = {
+ALLOWED_FUNCTIONS = {
     "x",
     "sin",
     "cos",
@@ -53,7 +55,7 @@ allowedFunctions = {
     "^",
 }
 
-stringFunctionConversions = {
+STRING_FUNCTION_CONVERSIONS = {
     "^": "**",
     "sin": "np.sin",
     "cos": "np.cos",
@@ -80,6 +82,14 @@ class Plotter(QWidget):
                         labels_setter)
         self.createErrorDialog()
 
+    """
+    initWindow():
+        - Creates the window of the application
+        @param title: Title of the window
+        @param width: Width of the window
+        @param height: Height of the window
+    """
+
     def initWindow(self, title, width, height):
         self.setWindowTitle(title)
         self.view = FigureCanvas(Figure(figsize=(width, height)))
@@ -90,6 +100,13 @@ class Plotter(QWidget):
             'figure_theme.png', facecolor=self.view.figure.get_facecolor(), edgecolor='none')
 
         self.toolbar = NavigationToolbar2QT(self.view, self)
+
+        """
+            createRangeSpinBox():
+                - Creates the range spin boxes
+                @param axis: Axis name of the range
+                @return: The range spin boxes and the layout
+        """
 
     def createRangeSpinBox(self, axis):
         mn = QDoubleSpinBox()
@@ -107,6 +124,12 @@ class Plotter(QWidget):
         range_setter.addWidget(mx)
         return mn, mx, range_setter
 
+    """
+        createFunctionInputBox():
+            - Creates the function input box and the plot button in the window
+            @return: The layout of the function input box and the plot button
+    """
+
     def createFunctionInputBox(self):
         self.function = QLineEdit()
         self.function.setFont(DEFAULT_FONT)
@@ -121,8 +144,19 @@ class Plotter(QWidget):
         function_input.addWidget(self.submit)
         return function_input
 
+    """
+        setPlotGrid():
+            - Creates the grid checkbox
+    """
+
     def setPlotGrid(self):
         self.grid = QCheckBox(text="Grid")
+
+    """
+        setXYLabels():
+            - Creates the x and y labels input boxes for the graph
+            @return: The layout of the x and y labels input boxes
+    """
 
     def setXYLabels(self):
         self.xlabel = QLineEdit()
@@ -142,6 +176,14 @@ class Plotter(QWidget):
         labels_setter.addWidget(self.ylabel)
         return labels_setter
 
+    """
+        setVLayout():
+            - Creates the vertical layout of the window
+            @param function_input: The layout of function input box and the plot button
+            @param range_setter: The layout of the range spin boxes
+            @param labels_setter: The layout of the x and y labels input boxes
+    """
+
     def setVLayout(self, function_input, range_setter, range_setter_y, labels_setter):
         vlayout = QVBoxLayout()
         vlayout.addWidget(self.toolbar)
@@ -153,11 +195,18 @@ class Plotter(QWidget):
         vlayout.addWidget(self.grid)
         self.setLayout(vlayout)
 
+    """
+        convertStringToFunction():
+            - Converts the string function to a python expression and returns it
+            @param string: The string function written in the function input box
+            @return: The python expression of the string function
+    """
+
     def convertStringToFunction(self, string):
         for word in re.findall('[a-zA-Z_]+', string):
-            if word not in allowedFunctions:
+            if word not in ALLOWED_FUNCTIONS:
                 raise TypeError("Invalid function Input")
-        for key, value in stringFunctionConversions.items():
+        for key, value in STRING_FUNCTION_CONVERSIONS.items():
             string = string.replace(key, value)
         if "x" not in string:
             string = f"{string}+0*x"
@@ -166,6 +215,12 @@ class Plotter(QWidget):
             return eval(string)
 
         return func
+
+    """
+        createErrorDialog():
+            - Creates the error dialog message box
+            - Connects specific events to handler functions
+    """
 
     def createErrorDialog(self):
         self.error_dialog = QMessageBox()
@@ -177,6 +232,14 @@ class Plotter(QWidget):
 
         self.submit.clicked.connect(lambda _: self.onChange(5))
         self.grid.stateChanged.connect(lambda _: self.onChange(5))
+
+    """
+        onChange():
+            - Handles the change of the range spin boxes based on index parameter
+            - Handles the change of the function input box based on index parameter
+            - Handles the submit of the plot button based on index parameter
+            - Handles the change of the grid checkbox based on index parameter
+    """
 
     @ Slot()
     def onChange(self, index):
@@ -214,9 +277,11 @@ class Plotter(QWidget):
             return
 
         elif index == 5:
-            x = np.linspace(self.mn.value(), self.mx.value())
+            x = np.linspace(self.mn.value(), self.mx.value(), 100)
+            x = np.concatenate((x[x < 0], [0], x[x > 0]))
             try:
                 y = self.convertStringToFunction(self.function.text())(x)
+
             except ValueError as e:
                 self.error_dialog.setWindowTitle("Function Error!")
                 self.error_dialog.setText(str(e))
@@ -232,6 +297,10 @@ class Plotter(QWidget):
                 self.error_dialog.setText(str(e))
                 self.error_dialog.show()
                 return
+
+            """
+                plot the function setting the x and y limits, labels and the grid state.
+            """
 
             self.axes.clear()
             self.axes.plot(x, y)

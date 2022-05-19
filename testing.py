@@ -29,11 +29,13 @@ class TestPlotter:
     def test_input_function_is_editable(self, request):
         assert request.instance.app.function.isReadOnly() == False
 
-    def test_input_function_changed(self, request):
-        request.instance.app.function.setText("x**2")
-        assert request.instance.app.function.text() == "x**2"
+    def test_input_function_changed(self, request, qtbot):
+        request.instance.app.function.setText("1/x")
+        assert request.instance.app.function.text() == "1/x"
+        with qtbot.waitSignal(request.instance.app.submit.clicked, timeout=10000):
+            request.instance.app.submit.click()
 
-    def test_input_function_changed_to_invalid(self, qtbot, request):
+    def test_input_function_changed_to_invalid(self, request):
         request.instance.app.function.setText("np")
         request.instance.app.submit.click()
         assert request.instance.app.error_dialog.isHidden() == False
